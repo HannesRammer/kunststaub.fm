@@ -47,6 +47,7 @@ class AudioManager {
 
   Future<void> loadLiveStreamInfo() async {
     try {
+      print('Fetching live  stream info...');
       final String nowPlayingUrl = "https://radio.kunststaub.fm/api/nowplaying";
       final response = await http.get(Uri.parse(nowPlayingUrl));
       if (response.statusCode == 200) {
@@ -83,6 +84,8 @@ class AudioManager {
           if (albumArtUrl != newAlbumArtUrl) {
             albumArtUrl = newAlbumArtUrl;
           }
+
+          onUpdate();
         }
       }
     } catch (e) {
@@ -92,7 +95,9 @@ class AudioManager {
 
   Future<void> play() async {
     if (isLiveStream) {
-      await _audioPlayer.play(UrlSource(streamUrl));
+      await loadLiveStreamInfo();
+      onUpdate();
+      _audioPlayer.play(UrlSource(streamUrl));
     } else {
       await _audioPlayer.resume();
     }
@@ -100,9 +105,11 @@ class AudioManager {
     onUpdate();
   }
 
-  Future<void> playMP3(String url) async {
+  Future<void> playMP3(String url, String artist, String title) async {
     await stop();
     isLiveStream = false;
+    artistName = artist;
+    albumName = title;
     await _audioPlayer.play(UrlSource(url));
     isPlaying = true;
     onUpdate();
@@ -131,8 +138,7 @@ class AudioManager {
       _audioPlayer.pause();
       isPlaying = false;
     } else {
-      _audioPlayer.resume();
-      isPlaying = true;
+      play();
     }
     onUpdate();
   }

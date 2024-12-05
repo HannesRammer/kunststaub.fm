@@ -18,9 +18,7 @@ class LiveButton extends StatelessWidget {
       onPressed: () async {
         await audioManager.stop();
         audioManager.isLiveStream = true;
-        if (!liveStreamInfoLoaded) {
-          await onLoadLiveStreamInfo(); // Load live stream info if not loaded
-        }
+          onLoadLiveStreamInfo(); // Load live stream info if not loaded
       },
       child: Text('Live'),
       style: ElevatedButton.styleFrom(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'artist_links.dart';
 
 class ArtistListScreen extends StatefulWidget {
-  final void Function(String, String, String, Duration, Duration) onSetSelected;
+  final void Function(String, String, String) onSetSelected;
 
   ArtistListScreen({required this.onSetSelected});
 
@@ -92,25 +92,10 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
                 String link = artists[index].value;
 
                 // Extract artist name and title
-                String artistName = artist.split(' Q kunststaub')[0];
+                String artistName = artist.split(' @ ')[0];
                 String title = artist.split('@').last.trim();
 
-                // Extract elapsed and duration from artist string, assuming they are present
-                // For example: "ArtistName @ Title (07.02.20) elapsed:123 duration:456"
-                Duration elapsed = Duration.zero;
-                Duration duration = Duration.zero;
-                final elapsedPattern = RegExp(r'elapsed:(\d+)');
-                final durationPattern = RegExp(r'duration:(\d+)');
 
-                final elapsedMatch = elapsedPattern.firstMatch(artist);
-                if (elapsedMatch != null) {
-                  elapsed = Duration(seconds: int.parse(elapsedMatch.group(1)!));
-                }
-
-                final durationMatch = durationPattern.firstMatch(artist);
-                if (durationMatch != null) {
-                  duration = Duration(seconds: int.parse(durationMatch.group(1)!));
-                }
 
                 return ListTile(
                   title: Text(
@@ -118,7 +103,7 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
                     style: TextStyle(color: Colors.black), // Ensure artist names are visible
                   ),
                   onTap: () {
-                    widget.onSetSelected(link, artistName, title, elapsed, duration);
+                    widget.onSetSelected(link, artistName, title);
                     Navigator.pop(context);
                   },
                 );

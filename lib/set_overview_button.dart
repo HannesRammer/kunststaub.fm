@@ -18,8 +18,8 @@ class SetOverviewButton extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => ArtistListScreen(onSetSelected: (setUrl, artist, title, elapsed, duration) {
-                audioManager.playMP3(setUrl);
+              builder: (context) => ArtistListScreen(onSetSelected: (setUrl, artist, title) {
+                audioManager.playMP3(setUrl, artist, title);
               })),
         );
       },

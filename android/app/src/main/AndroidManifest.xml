@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
     <!-- Internet permission -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Permissions for storage -->
@@ -12,7 +13,6 @@
     <!-- Required for WebView in case you load location-based content -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-
 
     <application
         android:hardwareAccelerated="true"
@@ -48,11 +48,47 @@
             android:value="2" />
     </application>
 
-    <!-- Intent Queries (Optional for Text Processing) -->
+    <!-- Intent Queries (Required for Android 11 and higher) -->
     <queries>
+        <!-- Support for Telegram URL scheme -->
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tg"/>
+        </intent>
+
+        <!-- Support for Facebook URL scheme -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="fb"/>
+        </intent>
+
+        <!-- Support for Instagram URL scheme -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="instagram"/>
+        </intent>
+
+        <!-- General HTTPS URL support -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+
+        <!-- If your app checks for call support -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
+
+        <!-- If your app checks for SMS support -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="sms"/>
+        </intent>
+
+        <!-- Support for in-app browser view (Custom Tabs) -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService"/>
         </intent>
     </queries>
 

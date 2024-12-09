@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'artist_links.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'favorites_manager.dart';
 
 class ArtistListScreen extends StatefulWidget {
-  final void Function(String, String, String) onSetSelected;
+  final void Function(String url, String artist, String title) onSetSelected;
 
   ArtistListScreen({required this.onSetSelected});
 
@@ -11,42 +13,65 @@ class ArtistListScreen extends StatefulWidget {
 }
 
 class _ArtistListScreenState extends State<ArtistListScreen> {
+  List<Map<String, String>> sets = [];
+  List<Map<String, String>> filteredSets = [];
   String searchQuery = '';
-  bool sortByDate = false; // Flag for sorting order
+  bool sortByDate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSetsFromSharedPrefs();
+  }
+
+  Future<void> _loadSetsFromSharedPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedSets = prefs.getString('savedSets');
+    if (cachedSets != null) {
+      final decodedSets = List<Map<String, dynamic>>.from(json.decode(cachedSets));
+      setState(() {
+        sets = decodedSets.map((item) => item.map((key, value) => MapEntry(key, value.toString()))).toList();
+        filteredSets = List.from(sets);
+      });
+    }
+  }
+
+  void _filterSets(String query) {
+    setState(() {
+      searchQuery = query.toLowerCase();
+      filteredSets = sets.where((set) {
+        final title = set['title']?.toLowerCase() ?? '';
+        final artist = set['artist']?.toLowerCase() ?? '';
+        return title.contains(searchQuery) || artist.contains(searchQuery);
+      }).toList();
+    });
+  }
+
+  void _sortSets() {
+    setState(() {
+      if (sortByDate) {
+        filteredSets.sort((a, b) {
+          final dateA = DateTime.tryParse(a['date'] ?? '') ?? DateTime.now();
+          final dateB = DateTime.tryParse(b['date'] ?? '') ?? DateTime.now();
+          return dateA.compareTo(dateB);
+        });
+      } else {
+        filteredSets.sort((a, b) => (a['title'] ?? '').compareTo(b['title'] ?? ''));
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    List<MapEntry<String, String>> artists = artistLinks.entries.toList();
-
-    // Sort artists by name or date
-    if (sortByDate) {
-      artists.sort((a, b) {
-        final datePattern = RegExp(r'\((\d{2}\.\d{2}\.\d{2})\)');
-        final matchA = datePattern.firstMatch(a.key);
-        final matchB = datePattern.firstMatch(b.key);
-
-        if (matchA != null && matchB != null) {
-          final dateA = DateTime.parse('20' + matchA.group(1)!.split('.').reversed.join());
-          final dateB = DateTime.parse('20' + matchB.group(1)!.split('.').reversed.join());
-          return dateA.compareTo(dateB);
-        }
-        return a.key.compareTo(b.key);
-      });
-    } else {
-      artists.sort((a, b) => a.key.compareTo(b.key));
-    }
-
-    // Filter artists by search query
-    if (searchQuery.isNotEmpty) {
-      artists = artists
-          .where((artist) =>
-          artist.key.toLowerCase().contains(searchQuery.toLowerCase()))
-          .toList();
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Artist List'),
+        title: const Text('Artist List'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadSetsFromSharedPrefs,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -56,54 +81,59 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Text Search',
-                      labelStyle: TextStyle(color: Colors.black), // Ensure the label is visible
+                    decoration: const InputDecoration(
+                      labelText: 'Search',
                       border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.search, color: Colors.black),
+                      suffixIcon: Icon(Icons.search),
                     ),
-                    style: TextStyle(color: Colors.black), // Ensure the entered text is visible
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value;
-                      });
-                    },
+                    onChanged: _filterSets,
                   ),
                 ),
-                SizedBox(width: 8.0),
-                Text('Name', style: TextStyle(color: Colors.black)),
+                const SizedBox(width: 8.0),
+                const Text('Sort by Date'),
                 Switch(
                   value: sortByDate,
                   onChanged: (value) {
                     setState(() {
                       sortByDate = value;
+                      _sortSets();
                     });
                   },
                 ),
-                Text('Date', style: TextStyle(color: Colors.black)),
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: artists.length,
+            child: filteredSets.isEmpty
+                ? const Center(child: Text('No sets found'))
+                : ListView.builder(
+              itemCount: filteredSets.length,
               itemBuilder: (context, index) {
-                String artist = artists[index].key;
-                String link = artists[index].value;
-
-                // Extract artist name and title
-                String artistName = artist.split(' @ ')[0];
-                String title = artist.split('@').last.trim();
-
-
-
+                final set = filteredSets[index];
                 return ListTile(
-                  title: Text(
-                    artist,
-                    style: TextStyle(color: Colors.black), // Ensure artist names are visible
+                  leading: set['albumArt'] != null
+                      ? Image.network(
+                    set['albumArt']!,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.music_note),
+                  )
+                      : const Icon(Icons.music_note),
+                  title: Text(set['title'] ?? 'Unknown Title'),
+                  subtitle: Text(set['artist'] ?? 'Unknown Artist'),
+                  trailing: IconButton(
+                    icon: Icon(
+                      Icons.star,
+                      color: FavoritesManager.isFavorite(set['title'] ?? '') ? Colors.yellow : Colors.grey,
+                    ),
+                    onPressed: () => FavoritesManager.toggleFavorite(set['title'] ?? ''),
                   ),
                   onTap: () {
-                    widget.onSetSelected(link, artistName, title);
+                    widget.onSetSelected(
+                      set['url'] ?? '',
+                      set['artist'] ?? '',
+                      set['title'] ?? '',
+                    );
                     Navigator.pop(context);
                   },
                 );

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'audio_manager.dart';
 import 'artist_list_screen.dart';
+import 'audio_manager.dart';
 
 class SetOverviewButton extends StatelessWidget {
   final AudioManager audioManager;
 
-  SetOverviewButton({
-    required this.audioManager,
-  });
+  SetOverviewButton({required this.audioManager});
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +16,12 @@ class SetOverviewButton extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => ArtistListScreen(onSetSelected: (setUrl, artist, title) {
-                audioManager.playMP3(setUrl, artist, title);
-              })),
+            builder: (context) => ArtistListScreen(
+              onSetSelected: (url, artist, title) {
+                audioManager.playMP3(url, artist, title);
+              },
+            ),
+          ),
         );
       },
       child: Text('Set Übersicht'),

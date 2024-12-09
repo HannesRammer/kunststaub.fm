@@ -1,38 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'rss_manager.dart';
 import 'home_screen.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-FlutterLocalNotificationsPlugin();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
-  runApp(KunststaubFMApp());
-  initializeNotifications();
+  const rssUrl = 'https://kunststaub.fm/feed.rss'; // Replace with actual RSS URL
+  final RSSManager rssManager = RSSManager(rssFeedUrl: rssUrl);
+
+  // Fetch and save RSS data to shared preferences
+  await rssManager.fetchAndSaveRSSFeed();
+
+  runApp(MyApp());
 }
 
-void initializeNotifications() {
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  final InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-
-  flutterLocalNotificationsPlugin.initialize(initializationSettings);
-}
-
-class KunststaubFMApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kunststaub FM',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        hintColor: Colors.orange,
-        textTheme: TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
-        ),
+        primarySwatch: Colors.blue,
       ),
       home: HomeScreen(),
     );

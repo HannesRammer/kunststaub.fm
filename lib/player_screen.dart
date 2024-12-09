@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'artist_list_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'audio_manager.dart';
 import 'live_button.dart';
 import 'set_overview_button.dart';
+import 'favorites_manager.dart';
 
 class PlayerScreen extends StatefulWidget {
   final bool isEmbedded;
@@ -76,10 +73,25 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    return _buildEmbeddedPlayer();
+    return widget.isEmbedded ? _buildEmbeddedPlayer() : _buildFullScreenPlayer();
+  }
+
+  Widget _buildFullScreenPlayer() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Player'),
+      ),
+      body: Center(
+        child: _buildPlayerContent(),
+      ),
+    );
   }
 
   Widget _buildEmbeddedPlayer() {
+    return _buildPlayerContent();
+  }
+
+  Widget _buildPlayerContent() {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -90,13 +102,37 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Album Art
           audioManager.albumArtUrl.isNotEmpty
-              ? Image.network(audioManager.albumArtUrl, height: 100, width: 100)
-              : Container(height: 100, width: 100, color: Colors.grey),
-          SizedBox(height: 10),
-          Text(audioManager.artistName, style: TextStyle(color: Colors.white, fontSize: 18)),
-          Text(audioManager.albumName, style: TextStyle(color: Colors.white70, fontSize: 14)),
-          SizedBox(height: 20),
+              ? ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: Image.network(audioManager.albumArtUrl,
+                height: 100, width: 100, fit: BoxFit.cover),
+          )
+              : Container(
+            height: 100,
+            width: 100,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Artist and Title
+          Text(
+            audioManager.artistName,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            audioManager.albumName,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+
+          // Control Buttons Row
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -105,101 +141,105 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                 liveStreamInfoLoaded: liveStreamInfoLoaded,
                 onLoadLiveStreamInfo: _loadLiveStreamInfo,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               SetOverviewButton(
                 audioManager: audioManager,
               ),
+              const SizedBox(width: 10),
+              IconButton(
+                icon: Icon(
+                  Icons.star,
+                  color: FavoritesManager.isFavorite(audioManager.albumName)
+                      ? Colors.yellow
+                      : Colors.white,
+                ),
+                onPressed: () async {
+                  await FavoritesManager.toggleFavorite(audioManager.albumName);
+                  setState(() {}); // Refresh the UI
+                },
+              ),
             ],
           ),
+          const SizedBox(height: 20),
+
+          // Playback Controls Row
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              isLoading
-                  ? CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              )
-                  : IconButton(
+              IconButton(
                 icon: Icon(
-                  audioManager.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                  audioManager.isPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill,
                   color: Colors.white,
                   size: 48,
                 ),
                 onPressed: () async {
-                  setState(() {
-                    isLoading = true;
-                  });
                   if (audioManager.isLiveStream) {
                     if (audioManager.isPlaying) {
                       await audioManager.stop();
                     } else {
-                      if (liveStreamInfoLoaded) {
-                        setState(() {
-                          audioManager.currentPosition = audioManager.elapsedTime;
-                        });
-                        audioManager.startElapsedTimeSimulation(); // Start timer simulation for elapsed time
-                        await audioManager.play();
-                      } else {
-                        await _loadLiveStreamInfo();
-                        if (audioManager.totalDuration > Duration.zero) {
-                          setState(() {
-                            audioManager.currentPosition = audioManager.elapsedTime;
-                          });
-                          audioManager.startElapsedTimeSimulation(); // Start timer simulation for elapsed time
-                          await audioManager.play();
-                        }
-                      }
+                      await audioManager.play();
                     }
                   } else {
                     audioManager.togglePlay();
                   }
                 },
               ),
-              SizedBox(width: 20),
+              const SizedBox(width: 20),
               IconButton(
                 icon: Icon(
-                  audioManager.currentVolume == 0 ? Icons.volume_off : Icons.volume_up,
+                  audioManager.currentVolume == 0
+                      ? Icons.volume_off
+                      : Icons.volume_up,
                   color: Colors.white,
                   size: 32,
                 ),
                 onPressed: audioManager.toggleMute,
               ),
-              Slider(
-                value: audioManager.currentVolume,
-                max: 1.0,
-                min: 0.0,
-                onChanged: (value) {
-                  audioManager.setVolume(value);
-                },
-                activeColor: Colors.white,
-                inactiveColor: Colors.white38,
+              Expanded(
+                child: Slider(
+                  value: audioManager.currentVolume,
+                  max: 1.0,
+                  min: 0.0,
+                  onChanged: (value) {
+                    audioManager.setVolume(value);
+                  },
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white38,
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+
+          // Progress Slider
           Slider(
             value: audioManager.isLiveStream
-                ? audioManager.currentPosition.inSeconds.toDouble() // Simulated elapsed time for live stream
-                : audioManager.currentPosition.inSeconds.toDouble().clamp(
-                0.0,
-                audioManager.totalDuration.inSeconds.toDouble()),
+                ? audioManager.currentPosition.inSeconds.toDouble()
+                : audioManager.currentPosition.inSeconds
+                .clamp(0.0, audioManager.totalDuration.inSeconds)
+                .toDouble(),
             max: audioManager.totalDuration.inSeconds.toDouble() > 0
                 ? audioManager.totalDuration.inSeconds.toDouble()
                 : 1.0,
             onChanged: audioManager.isLiveStream
-                ? null // Disable slider for live stream
+                ? null
                 : (value) async {
-              // Seek to the selected position for MP3
               await audioManager.seek(Duration(seconds: value.toInt()));
               setState(() {
-                audioManager.currentPosition = Duration(seconds: value.toInt());
+                audioManager.currentPosition =
+                    Duration(seconds: value.toInt());
               });
             },
             activeColor: Colors.white,
             inactiveColor: Colors.white38,
           ),
 
+          // Time Text
           Text(
             "${audioManager.formatDuration(audioManager.currentPosition)} / ${audioManager.formatDuration(audioManager.totalDuration)}",
-            style: TextStyle(color: Colors.white70),
+            style: const TextStyle(color: Colors.white70),
           ),
         ],
       ),

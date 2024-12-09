@@ -4,12 +4,37 @@ import 'player_screen.dart';
 import 'social_media_links.dart';
 import 'game_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late AudioManager audioManager;
+
+  @override
+  void initState() {
+    super.initState();
+    audioManager =
+        AudioManager(onUpdate: () {
+      setState(() {}); // Update the UI when the audio manager notifies us
+
+    });
+    audioManager.loadLiveStreamInfo();
+
+  }
+
+  @override
+  void dispose() {
+    audioManager.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Kunststaub FM'),
+        title: const Text('Kunststaub FM'),
         centerTitle: true,
       ),
       drawer: Drawer(
@@ -17,10 +42,10 @@ class HomeScreen extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: <Widget>[
             DrawerHeader(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.blue,
               ),
-              child: Text(
+              child: const Text(
                 'Kunststaub FM',
                 style: TextStyle(
                   color: Colors.white,
@@ -29,8 +54,8 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.videogame_asset),
-              title: Text('Spiel starten'),
+              leading: const Icon(Icons.videogame_asset),
+              title: const Text('Spiel starten'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -44,7 +69,7 @@ class HomeScreen extends StatelessWidget {
       body: Stack(
         children: [
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/images/saturn_background.jpg'),
                 fit: BoxFit.cover,
@@ -56,7 +81,10 @@ class HomeScreen extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: PlayerScreen(isEmbedded: true),
+                child:  PlayerScreen(
+                        isEmbedded: true,
+                        audioManager: audioManager,
+                      ),
               ),
               SocialMediaLinks(),
             ],

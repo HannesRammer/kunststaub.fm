@@ -1,27 +1,27 @@
-import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:http/http.dart' as http;
 
 class AudioManager {
-  final BuildContext context;
   final VoidCallback onUpdate;
+
   late AudioPlayer _audioPlayer;
-  bool isLiveStream = false;
   bool isPlaying = false;
+  bool isLiveStream = true;
+  bool isLoading = false;
   double currentVolume = 0.5;
   Duration currentPosition = Duration.zero;
   Duration totalDuration = Duration.zero;
   Duration elapsedTime = Duration.zero;
   String streamUrl = "";
-  String artistName = "";
-  String albumName = "";
-  String channelName = "";
+  String artistName = "Unknown Artist";
+  String albumName = "Unknown Album";
   String albumArtUrl = "";
   Timer? _elapsedTimer;
 
-  AudioManager(this.context, {required this.onUpdate}) {
+  AudioManager({required this.onUpdate}) {
     _audioPlayer = AudioPlayer();
     _audioPlayer.setVolume(currentVolume);
 
@@ -41,106 +41,104 @@ class AudioManager {
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
       isPlaying = state == PlayerState.playing;
+      if (!isPlaying && isLiveStream) {
+        stopElapsedTimeSimulation();
+      }
       onUpdate();
     });
   }
 
+  Future<void> loadMP3StreamInfo(
+      String url, String artist, String title) async {
+    await stop();
+    isLiveStream = false;
+    artistName = artist;
+    albumName = title;
+    streamUrl = url;
+    onUpdate();
+  }
+
   Future<void> loadLiveStreamInfo() async {
+    if (isLoading) return; // Prevent multiple calls
+    _setLoading(true);
     try {
-      print('Fetching live  stream info...');
-      final String nowPlayingUrl = "https://radio.kunststaub.fm/api/nowplaying";
-      final response = await http.get(Uri.parse(nowPlayingUrl));
+      final response = await http
+          .get(Uri.parse("https://radio.kunststaub.fm/api/nowplaying"));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data.isNotEmpty) {
           final nowPlaying = data[0]['now_playing'];
           final song = nowPlaying['song'];
-
-          // Update stream URL from the API response
           streamUrl = data[0]['station']['listen_url'] ?? streamUrl;
-
-          final newArtistName = song['artist'] ?? "Künstlername";
-          final newAlbumName = song['title'] ?? "Mixname";
-          final newChannelName = song['album'] ?? "Channelname";
-          final newAlbumArtUrl = song['art'] ?? "";
-          final newElapsed = Duration(seconds: nowPlaying['elapsed'] ?? 0);
-          final newTotalDuration = Duration(seconds: nowPlaying['duration'] ?? 0);
-
-          if (newTotalDuration.inSeconds > 5 && totalDuration != newTotalDuration) {
+          artistName = song['artist'] ?? "Unknown Artist";
+          albumName = song['title'] ?? "Unknown Title";
+          albumArtUrl = song['art'] ?? "";
+          final newElapsedTime = Duration(seconds: nowPlaying['elapsed'] ?? 0);
+          final newTotalDuration =
+              Duration(seconds: nowPlaying['duration'] ?? 0);
+          if (newTotalDuration.inSeconds > 5) {
             totalDuration = newTotalDuration;
           }
-          if (newElapsed.inSeconds > 5 && elapsedTime != newElapsed) {
-            elapsedTime = newElapsed;
+          if (newElapsedTime.inSeconds > 0) {
+            elapsedTime = newElapsedTime;
           }
-          if (artistName != newArtistName) {
-            artistName = newArtistName;
-          }
-          if (albumName != newAlbumName) {
-            albumName = newAlbumName;
-          }
-          if (channelName != newChannelName) {
-            channelName = newChannelName;
-          }
-          if (albumArtUrl != newAlbumArtUrl) {
-            albumArtUrl = newAlbumArtUrl;
-          }
-
           onUpdate();
         }
       }
     } catch (e) {
       print('Error fetching live stream info: $e');
+    } finally {
+      _setLoading(false);
     }
   }
 
   Future<void> play() async {
-    if (isLiveStream) {
-      await loadLiveStreamInfo();
-      onUpdate();
-      _audioPlayer.play(UrlSource(streamUrl));
-    } else {
-      await _audioPlayer.resume();
+    if (isLoading) return;
+    _setLoading(true);
+    try {
+      if (isLiveStream) {
+        if (streamUrl.isNotEmpty) {
+          await _audioPlayer.play(UrlSource(streamUrl));
+          startElapsedTimeSimulation();
+        }
+      } else {
+        await _audioPlayer.resume();
+      }
+      isPlaying = true;
+    } finally {
+      _setLoading(false);
     }
-    isPlaying = true;
     onUpdate();
   }
 
-  Future<void> playMP3(String url, String artist, String title) async {
-    await stop();
-    isLiveStream = false;
-    artistName = artist;
-    albumName = title;
-    await _audioPlayer.play(UrlSource(url));
-    isPlaying = true;
+  Future<void> stop() async {
+    if (isLoading) return;
+    _setLoading(true);
+    try {
+      await _audioPlayer.stop();
+      isPlaying = false;
+      stopElapsedTimeSimulation();
+      //elapsedTime = Duration.zero;
+    } finally {
+      _setLoading(false);
+    }
     onUpdate();
   }
 
   void startElapsedTimeSimulation() {
-    _elapsedTimer?.cancel(); // Cancel any existing timer
+    stopElapsedTimeSimulation();
     _elapsedTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (isPlaying && isLiveStream) {
-        elapsedTime += Duration(seconds: 1);
-        currentPosition = elapsedTime;
-        onUpdate();
+      elapsedTime += Duration(seconds: 1);
+      if (elapsedTime >= totalDuration && totalDuration.inSeconds > 5) {
+        timer.cancel();
       }
+      onUpdate();
     });
   }
 
-  Future<void> stop() async {
-    await _audioPlayer.stop();
-    isPlaying = false;
+  void stopElapsedTimeSimulation() {
     _elapsedTimer?.cancel();
-    onUpdate();
-  }
-
-  void togglePlay() {
-    if (isPlaying) {
-      _audioPlayer.pause();
-      isPlaying = false;
-    } else {
-      play();
-    }
-    onUpdate();
+    _elapsedTimer = null;
   }
 
   void setVolume(double volume) {
@@ -150,13 +148,7 @@ class AudioManager {
   }
 
   void toggleMute() {
-    if (currentVolume > 0) {
-      _audioPlayer.setVolume(0);
-      currentVolume = 0;
-    } else {
-      _audioPlayer.setVolume(0.5);
-      currentVolume = 0.5;
-    }
+    setVolume(currentVolume > 0 ? 0 : 0.5);
     onUpdate();
   }
 
@@ -170,11 +162,27 @@ class AudioManager {
 
   void dispose() {
     _audioPlayer.dispose();
-    _elapsedTimer?.cancel();
+    stopElapsedTimeSimulation();
   }
 
   String formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     return "${twoDigits(duration.inHours)}:${twoDigits(duration.inMinutes.remainder(60))}:${twoDigits(duration.inSeconds.remainder(60))}";
+  }
+
+  void _setLoading(bool value) {
+    print('setLoading: $value');
+    isLoading = value;
+    onUpdate();
+  }
+
+  void togglePlay() async {
+    if (isLiveStream) {
+      isPlaying ? await stop() : await play();
+    } else {
+      isPlaying ? await _audioPlayer.pause() : await _audioPlayer.resume();
+    }
+    isPlaying = !isPlaying;
+    onUpdate();
   }
 }

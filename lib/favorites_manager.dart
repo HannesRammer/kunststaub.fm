@@ -1,26 +1,44 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FavoritesManager {
-  static List<String> _favorites = [];
+  static const String _favoritesKey = 'favorites';
 
-  static Future<void> loadFavorites() async {
+  static Future<List<String>> getFavorites() async {
     final prefs = await SharedPreferences.getInstance();
-    _favorites = prefs.getStringList('favorites') ?? [];
+    return prefs.getStringList(_favoritesKey) ?? [];
   }
 
-  static bool isFavorite(String title) {
-    return _favorites.contains(title);
+  static Future<void> addFavorite(String title) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = await getFavorites();
+    if (!favorites.contains(title)) {
+      favorites.add(title);
+      await prefs.setStringList(_favoritesKey, favorites);
+    }
+  }
+
+  static Future<void> removeFavorite(String title) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = await getFavorites();
+    if (favorites.contains(title)) {
+      favorites.remove(title);
+      await prefs.setStringList(_favoritesKey, favorites);
+    }
   }
 
   static Future<void> toggleFavorite(String title) async {
     final prefs = await SharedPreferences.getInstance();
-    if (_favorites.contains(title)) {
-      _favorites.remove(title);
+    final favorites = await getFavorites();
+    if (favorites.contains(title)) {
+      favorites.remove(title);
     } else {
-      _favorites.add(title);
+      favorites.add(title);
     }
-    await prefs.setStringList('favorites', _favorites);
+    await prefs.setStringList(_favoritesKey, favorites);
   }
 
-  static List<String> get favorites => _favorites;
+  static Future<bool> isFavorite(String title) async {
+    final favorites = await getFavorites();
+    return favorites.contains(title);
+  }
 }

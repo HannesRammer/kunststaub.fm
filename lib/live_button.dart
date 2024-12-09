@@ -1,29 +1,32 @@
 import 'package:flutter/material.dart';
 import 'audio_manager.dart';
 
-class LiveButton extends StatelessWidget {
+class LiveButton extends StatefulWidget {
   final AudioManager audioManager;
-  final bool liveStreamInfoLoaded;
-  final Future<void> Function() onLoadLiveStreamInfo;
 
-  LiveButton({
-    required this.audioManager,
-    required this.liveStreamInfoLoaded,
-    required this.onLoadLiveStreamInfo,
-  });
+  const LiveButton({Key? key, required this.audioManager}) : super(key: key);
 
+  @override
+  _LiveButtonState createState() => _LiveButtonState();
+}
+
+class _LiveButtonState extends State<LiveButton> {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: () async {
-        await audioManager.stop();
-        audioManager.isLiveStream = true;
-          onLoadLiveStreamInfo(); // Load live stream info if not loaded
+        // Prevent redundant calls if already live or loading
+        if (widget.audioManager.isLiveStream || widget.audioManager.isLoading) {
+          return;
+        }
+
+        widget.audioManager.isLiveStream = true;
+        await widget.audioManager.loadLiveStreamInfo();
       },
-      child: Text('Live'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: audioManager.isLiveStream ? Colors.blue : Colors.grey,
+        backgroundColor: widget.audioManager.isLiveStream ? Colors.blue : Colors.grey,
       ),
+      child: const Text('Live'),
     );
   }
 }

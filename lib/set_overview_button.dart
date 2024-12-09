@@ -2,32 +2,37 @@ import 'package:flutter/material.dart';
 import 'artist_list_screen.dart';
 import 'audio_manager.dart';
 
-class SetOverviewButton extends StatelessWidget {
+class SetOverviewButton extends StatefulWidget {
   final AudioManager audioManager;
 
-  SetOverviewButton({required this.audioManager});
+  const SetOverviewButton({Key? key, required this.audioManager}) : super(key: key);
+
+  @override
+  _SetOverviewButtonState createState() => _SetOverviewButtonState();
+}
+
+class _SetOverviewButtonState extends State<SetOverviewButton> {
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: () async {
-        await audioManager.stop();
-        audioManager.isLiveStream = false;
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ArtistListScreen(
               onSetSelected: (url, artist, title) {
-                audioManager.playMP3(url, artist, title);
+                widget.audioManager.loadMP3StreamInfo(url, artist, title);
+
               },
             ),
           ),
         );
       },
-      child: Text('Set Übersicht'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: !audioManager.isLiveStream ? Colors.blue : Colors.grey,
+        backgroundColor: widget.audioManager.isLiveStream ? Colors.grey : Colors.blue,
       ),
+      child:  const Text('Sets Overview'),
     );
   }
 }

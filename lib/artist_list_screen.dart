@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'favorites_manager.dart';
+import 'package:flutter/foundation.dart';
 
 class ArtistListScreen extends StatefulWidget {
   final void Function(String url, String artist, String title) onSetSelected;
@@ -17,6 +18,7 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
   List<Map<String, String>> filteredSets = [];
   String searchQuery = '';
   bool sortByDate = false;
+  Map<String, ValueNotifier<bool>> favoriteNotifiers = {};
 
   @override
   void initState() {
@@ -29,19 +31,30 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
       final prefs = await SharedPreferences.getInstance();
       final cachedSets = prefs.getString('savedSets');
       if (cachedSets != null) {
-        final decodedSets =
-            List<Map<String, dynamic>>.from(json.decode(cachedSets));
-        setState(() {
-          sets = decodedSets
-              .map((item) =>
-                  item.map((key, value) => MapEntry(key, value.toString())))
-              .toList();
-          filteredSets = List.from(sets);
-        });
+        final decodedSets = List<Map<String, dynamic>>.from(json.decode(cachedSets));
+        sets = decodedSets.map((item) => item.map((key, value) => MapEntry(key, value.toString()))).toList();
+        filteredSets = List.from(sets);
+        for (var set in sets) {
+          final title = set['title'] ?? 'Unknown Title';
+          favoriteNotifiers[title] = ValueNotifier(await FavoritesManager.isFavorite(title));
+          // Preload images
+          if (set['albumArt'] != null && set['albumArt']!.isNotEmpty) {
+            precacheImage(NetworkImage(set['albumArt']!), context);
+          }
+        }
+        setState(() {});
       }
     } catch (e) {
       print('Error loading sets from SharedPreferences: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    for (var notifier in favoriteNotifiers.values) {
+      notifier.dispose();
+    }
+    super.dispose();
   }
 
   void _filterSets(String query) {
@@ -64,8 +77,7 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
           return dateA.compareTo(dateB);
         });
       } else {
-        filteredSets
-            .sort((a, b) => (a['title'] ?? '').compareTo(b['title'] ?? ''));
+        filteredSets.sort((a, b) => (a['title'] ?? '').compareTo(b['title'] ?? ''));
       }
     });
   }
@@ -119,20 +131,17 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
                     itemCount: filteredSets.length,
                     itemBuilder: (context, index) {
                       final set = filteredSets[index];
-                      return FutureBuilder<bool>(
-                        future: FavoritesManager.isFavorite(
-                            set['title'] ?? 'Unknown Title'),
-                        builder: (context, snapshot) {
-                          final isFavorite = snapshot.data ?? false;
+                      final title = set['title'] ?? 'Unknown Title';
+                      return ValueListenableBuilder<bool>(
+                        valueListenable: favoriteNotifiers[title]!,
+                        builder: (context, isFavorite, child) {
                           return ListTile(
                             leading: set['albumArt'] != null
                                 ? Image.network(
                                     set['albumArt']!,
                                     width: 50,
                                     height: 50,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.music_note),
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.music_note),
                                   )
                                 : const Icon(Icons.music_note),
                             title: Text(set['title'] ?? 'Unknown Title'),
@@ -143,9 +152,8 @@ class _ArtistListScreenState extends State<ArtistListScreen> {
                                 color: isFavorite ? Colors.yellow : Colors.grey,
                               ),
                               onPressed: () async {
-                                await FavoritesManager.toggleFavorite(
-                                    set['title'] ?? '');
-                                setState(() {});
+                                await FavoritesManager.toggleFavorite(title);
+                                favoriteNotifiers[title]!.value = !isFavorite;
                               },
                             ),
                             onTap: () {

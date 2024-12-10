@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'audio_manager.dart';
+import 'dart:async';
 
 class LiveButton extends StatefulWidget {
   final AudioManager audioManager;
@@ -20,8 +21,25 @@ class _LiveButtonState extends State<LiveButton> {
           return;
         }
 
-        widget.audioManager.isLiveStream = true;
-        await widget.audioManager.loadLiveStreamInfo();
+        setState(() {
+          widget.audioManager.isLiveStream = true;
+        });
+
+        try {
+          print('Requesting live stream info...');
+          await widget.audioManager.loadLiveStreamInfo().timeout(Duration(seconds: 10)); // Add timeout here
+          print('Live stream info loaded successfully.');
+        } on TimeoutException catch (_) {
+          print('Error: Request to load live stream info timed out.');
+          setState(() {
+            widget.audioManager.isLiveStream = false;
+          });
+        } catch (e) {
+          print('Error loading live stream info: $e');
+          setState(() {
+            widget.audioManager.isLiveStream = false;
+          });
+        }
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: widget.audioManager.isLiveStream ? Colors.blue : Colors.grey,

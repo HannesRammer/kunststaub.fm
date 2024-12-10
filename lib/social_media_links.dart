@@ -16,12 +16,30 @@ class SocialMediaLinks extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildSocialMediaIcon('assets/images/sc.png', 'soundcloud://users/kunststaubfm', 'https://soundcloud.com/kunststaubfm'),
-              _buildSocialMediaIcon('assets/images/tg.png', 'tg://resolve?domain=kunststaubkiosk', 'https://t.me/kunststaubkiosk'),
-              _buildSocialMediaIcon('assets/images/fb.png', 'fb://page/kunststaubfm', 'https://facebook.com/kunststaubfm'),
-              _buildSocialMediaIcon('assets/images/ig.png', 'instagram://user?username=kunststaubfm', 'https://instagram.com/kunststaubfm'),
-              _buildSocialMediaIcon('assets/images/radio-de.png', 'https://radio.de/s/kunststaubfm', 'https://radio.de/s/kunststaubfm'),
-              _buildSocialMediaIcon('assets/images/pp.png', 'https://www.paypal.com/donate/?hosted_button_id=XF2WDPBJEJSHU', 'https://www.paypal.com/donate/?hosted_button_id=XF2WDPBJEJSHU'),
+              _buildSocialMediaIcon(
+                  'assets/images/sc.png',
+                  'soundcloud://users/kunststaubfm',
+                  'https://soundcloud.com/kunststaubfm'),
+              _buildSocialMediaIcon(
+                  'assets/images/tg.png',
+                  'tg://resolve?domain=kunststaubkiosk',
+                  'https://t.me/kunststaubkiosk'),
+              _buildSocialMediaIcon(
+                  'assets/images/fb.png',
+                  'fb://page/kunststaubfm',
+                  'https://facebook.com/kunststaubfm'),
+              _buildSocialMediaIcon(
+                  'assets/images/ig.png',
+                  'instagram://user?username=kunststaubfm',
+                  'https://instagram.com/kunststaubfm'),
+              _buildSocialMediaIcon(
+                  'assets/images/radio-de.png',
+                  'https://radio.de/s/kunststaubfm',
+                  'https://radio.de/s/kunststaubfm'),
+              _buildSocialMediaIcon(
+                  'assets/images/pp.png',
+                  'https://www.paypal.com/donate/?hosted_button_id=XF2WDPBJEJSHU',
+                  'https://www.paypal.com/donate/?hosted_button_id=XF2WDPBJEJSHU'),
             ],
           ),
           SizedBox(height: 10),

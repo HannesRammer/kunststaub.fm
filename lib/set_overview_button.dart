@@ -12,7 +12,6 @@ class SetOverviewButton extends StatefulWidget {
 }
 
 class _SetOverviewButtonState extends State<SetOverviewButton> {
-
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
@@ -21,9 +20,12 @@ class _SetOverviewButtonState extends State<SetOverviewButton> {
           context,
           MaterialPageRoute(
             builder: (context) => ArtistListScreen(
-              onSetSelected: (url, artist, title) {
-                widget.audioManager.loadMP3StreamInfo(url, artist, title);
-
+              onSetSelected: (url, artist, title) async {
+                try {
+                  await widget.audioManager.loadMP3StreamInfo(url, artist, title);
+                } catch (e) {
+                  print('Error loading MP3 stream info: $e');
+                }
               },
             ),
           ),
@@ -32,7 +34,7 @@ class _SetOverviewButtonState extends State<SetOverviewButton> {
       style: ElevatedButton.styleFrom(
         backgroundColor: widget.audioManager.isLiveStream ? Colors.grey : Colors.blue,
       ),
-      child:  const Text('Sets Overview'),
+      child: const Text('Sets Overview'),
     );
   }
 }

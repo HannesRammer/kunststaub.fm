@@ -3,42 +3,45 @@ import 'audio_manager.dart';
 import 'favorites_manager.dart';
 import 'live_button.dart';
 import 'set_overview_button.dart';
+import 'package:flutter/foundation.dart';
 
 class PlayerScreen extends StatefulWidget {
   final AudioManager audioManager;
   final bool isEmbedded;
 
-  const PlayerScreen(
-      {Key? key, required this.audioManager, this.isEmbedded = false})
-      : super(key: key);
+  const PlayerScreen({Key? key, required this.audioManager, this.isEmbedded = false}) : super(key: key);
 
   @override
   _PlayerScreenState createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen>
-    with WidgetsBindingObserver {
+class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver {
   late AudioManager audioManager;
+  ValueNotifier<bool> isFavoriteNotifier = ValueNotifier(false);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     audioManager = widget.audioManager;
+    _updateFavoriteStatus();
+  }
+
+  Future<void> _updateFavoriteStatus() async {
+    isFavoriteNotifier.value = await FavoritesManager.isFavorite(audioManager.albumName);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     audioManager.dispose();
+    isFavoriteNotifier.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.isEmbedded
-        ? _buildEmbeddedPlayer()
-        : _buildFullScreenPlayer();
+    return widget.isEmbedded ? _buildEmbeddedPlayer() : _buildFullScreenPlayer();
   }
 
   Widget _buildEmbeddedPlayer() {
@@ -94,19 +97,17 @@ class _PlayerScreenState extends State<PlayerScreen>
               const SizedBox(width: 10),
               SetOverviewButton(audioManager: audioManager),
               const SizedBox(width: 10),
-              FutureBuilder<bool>(
-                future: FavoritesManager.isFavorite(audioManager.albumName),
-                builder: (context, snapshot) {
-                  final isFavorite = snapshot.data ?? false;
+              ValueListenableBuilder<bool>(
+                valueListenable: isFavoriteNotifier,
+                builder: (context, isFavorite, child) {
                   return IconButton(
                     icon: Icon(
                       Icons.favorite,
                       color: isFavorite ? Colors.red : Colors.white,
                     ),
                     onPressed: () async {
-                      await FavoritesManager.toggleFavorite(
-                          audioManager.albumName);
-                      setState(() {});
+                      await FavoritesManager.toggleFavorite(audioManager.albumName);
+                      _updateFavoriteStatus();
                     },
                   );
                 },
@@ -119,22 +120,18 @@ class _PlayerScreenState extends State<PlayerScreen>
             children: [
               IconButton(
                 icon: Icon(
-                  audioManager.isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_fill,
+                  audioManager.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
                   color: Colors.white,
                   size: 48,
                 ),
-                onPressed: () {
-                  audioManager.togglePlay();
+                onPressed: () async {
+                  await audioManager.togglePlay();
                 },
               ),
               const SizedBox(width: 20),
               IconButton(
                 icon: Icon(
-                  audioManager.currentVolume == 0
-                      ? Icons.volume_off
-                      : Icons.volume_up,
+                  audioManager.currentVolume == 0 ? Icons.volume_off : Icons.volume_up,
                   color: Colors.white,
                   size: 32,
                 ),
@@ -152,12 +149,8 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
           const SizedBox(height: 20),
           Slider(
-            value: audioManager.isLiveStream
-                ? audioManager.elapsedTime.inSeconds.toDouble()
-                : audioManager.currentPosition.inSeconds.toDouble(),
-            max: audioManager.totalDuration.inSeconds
-                .toDouble()
-                .clamp(1.0, double.infinity),
+            value: audioManager.currentPosition.inSeconds.toDouble(),
+            max: audioManager.totalDuration.inSeconds.toDouble().clamp(1.0, double.infinity),
             onChanged: audioManager.isLiveStream
                 ? null
                 : (value) async {
@@ -168,7 +161,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             inactiveColor: Colors.white38,
           ),
           Text(
-            "${audioManager.formatDuration(audioManager.elapsedTime)} / ${audioManager.formatDuration(audioManager.totalDuration)}",
+            "${audioManager.formatDuration(audioManager.currentPosition)} / ${audioManager.formatDuration(audioManager.totalDuration)}",
             style: const TextStyle(color: Colors.white70),
           ),
         ],

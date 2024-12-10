@@ -15,13 +15,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    audioManager =
-        AudioManager(onUpdate: () {
+    audioManager = AudioManager(onUpdate: () {
       setState(() {}); // Update the UI when the audio manager notifies us
-
     });
     audioManager.loadLiveStreamInfo();
-
   }
 
   @override
@@ -81,10 +78,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child:  PlayerScreen(
-                        isEmbedded: true,
-                        audioManager: audioManager,
-                      ),
+                child: PlayerScreen(
+                  isEmbedded: true,
+                  audioManager: audioManager,
+                ),
               ),
               SocialMediaLinks(),
             ],
